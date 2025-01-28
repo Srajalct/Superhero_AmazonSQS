@@ -74,7 +74,7 @@ public class SuperheroController {
     }
 
     @PostMapping("/send_message")
-    public String sendMessageToQueue(@RequestParam(value = "superHeroName", defaultValue = "thor") String superHeroName) {
+    public String sendMessageToQueue(@RequestBody String superHeroName) {
         String queueUrl = "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/superhero-queue";
 
         try {
