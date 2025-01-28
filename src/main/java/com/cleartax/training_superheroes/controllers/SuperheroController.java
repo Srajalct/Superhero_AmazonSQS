@@ -5,12 +5,14 @@ import com.cleartax.training_superheroes.dto.SuperheroRequestBody;
 import com.cleartax.training_superheroes.services.SqsService;
 import com.cleartax.training_superheroes.services.SuperheroConsumer;
 import com.cleartax.training_superheroes.services.SuperheroService;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import software.amazon.awssdk.services.sqs.SqsClient;
 import software.amazon.awssdk.services.sqs.model.Message;
 import software.amazon.awssdk.services.sqs.model.SendMessageRequest;
 import software.amazon.awssdk.services.sqs.model.SendMessageResponse;
+import software.amazon.awssdk.thirdparty.jackson.core.JsonProcessingException;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -43,52 +45,42 @@ public class SuperheroController {
         return String.format("Hello %s! Message sent with ID: %s", username, response.messageId());
     }
 
-    @GetMapping("/update_SuperHero_async")
-    public String updateSuperHero(@RequestParam(value = "superHeroName", defaultValue = "thor") String superHeroName) {
-        String queueUrl = "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/superhero-queue";
+    @GetMapping("/update_superhero_async")
+    public String updateSuperhero(@RequestParam(value = "superHeroName", defaultValue = "ironMan") String superHeroName)
+    {
+        SendMessageResponse result = sqsClient.sendMessage(SendMessageRequest.builder()
+                .queueUrl(sqsConfig.getQueueUrl())
+                .messageBody(superHeroName)
+                .build());
 
+        return String.format("Message sent to queue with message id %s and superHero %s", result.messageId(), superHeroName);
+    }
+
+    @PostMapping("/push_superheroes")
+    public String pushAllSuperheroes()
+    {
+        superheroService.pushAllSuperheroesToQueue(sqsConfig.getQueueUrl());
+        return "All superheroes have been pushed to the queue.";
+    }
+
+
+
+    @PostMapping("/add_superhero")
+    public String addSuperhero(@RequestBody Superhero superhero) {
         try {
-            List<Message> messages = sqsService.receiveMessages(queueUrl);
+            String messageBody = new ObjectMapper().writeValueAsString(superhero);
+            sqsClient.sendMessage(SendMessageRequest.builder()
+                    .queueUrl(sqsConfig.getQueueUrl())
+                    .messageBody(messageBody)
+                    .build());
 
-            if (messages.isEmpty()) {
-                return "No messages in the queue to update!";
-            }
-
-            for (Message message : messages)
-            {
-                System.out.println("Original Message: " + message.body());
-                sqsService.deleteMessage(queueUrl, message.receiptHandle());
-                System.out.println("Deleted original message with receipt handle: " + message.receiptHandle());
-                String updatedMessageBody = message.body() + " - updated with " + superHeroName;
-                sqsService.sendMessage(queueUrl, updatedMessageBody);
-                System.out.println("Requeued updated message: " + updatedMessageBody);
-            }
-
-            return String.format("Updated %d messages in the queue!", messages.size());
-
-        }
-        catch (Exception e) {
-            e.printStackTrace();
-            return "Error processing request: " + e.getMessage();
+            return String.format("Superhero %s added to the queue!", superhero.getName());
+        } catch (com.fasterxml.jackson.core.JsonProcessingException e) {
+            throw new RuntimeException(e);
         }
     }
 
-    @PostMapping("/send_message")
-    public String sendMessageToQueue(@RequestBody String superHeroName) {
-        String queueUrl = "http://sqs.us-east-1.localhost.localstack.cloud:4566/000000000000/superhero-queue";
 
-        try {
-            // Send a message to the SQS queue
-            sqsService.sendMessage(queueUrl, superHeroName);
-            System.out.println("Message sent to queue: " + superHeroName);
-
-            return String.format("Message '%s' successfully sent to the queue!", superHeroName);
-
-        } catch (Exception e) {
-            e.printStackTrace();
-            return "Error sending message: " + e.getMessage();
-        }
-    }
 
 
     @GetMapping("/get_message_from_queue")
