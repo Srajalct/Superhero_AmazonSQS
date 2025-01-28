@@ -11,10 +11,12 @@ import software.amazon.awssdk.services.s3.S3Client;
 import java.net.URI;
 
 @Configuration
-public class AwsConfig {
+public class AwsConfig
+{
 
     @Bean
-    public S3Client s3Client() {
+    public S3Client s3Client()
+    {
         return S3Client.builder()
                 .region(Region.of("us-east-1"))
                 .credentialsProvider(StaticCredentialsProvider.create(

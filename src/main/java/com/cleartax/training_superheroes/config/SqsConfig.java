@@ -8,23 +8,15 @@ import org.springframework.context.annotation.Configuration;
 @Data
 public class SqsConfig {
 
-  @Value("${sqs.queue.name}")
+  @Value("${aws.sqs.endpoint}")
+  private String sqsEndpoint;
+
+  @Value("${aws.sqs.queueName}")
   private String queueName;
 
-  @Value("${sqs.queue.url}")
-  private String queueUrl;
-
-  @Value("${sqs.queue.region}")
-  private String region;
-
-  @Value("${sqs.queue.access-key}")
-  private String accessKey;
-
-  @Value("${sqs.queue.secret-key}")
-  private String secretKey;
-
-  @Value("${sqs.queue.session-token}")
-  private String sessionToken;
+  public String getQueueUrl() {
+    return String.format("%s/000000000000/%s", sqsEndpoint, queueName);
+  }
 
 }
 
